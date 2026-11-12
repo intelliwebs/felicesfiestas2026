@@ -6,7 +6,7 @@
   <title>¡Felices Fiestas! - Club Legislativo</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Great Vibes / Playfair Display & Inter para tipografía festiva y legible -->
+  <!-- Google Fonts: Great Vibes, Playfair Display e Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
@@ -19,17 +19,20 @@
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
       background: radial-gradient(circle at 50% 35%, #0f2e26 0%, #071917 55%, #030b0d 100%);
       font-family: 'Inter', sans-serif;
     }
-    #sim-canvas {
+    #canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
       display: block;
       width: 100%;
       height: 100%;
-      touch-action: none; /* Evita scroll al arrastrar pelotitas en móviles */
+      touch-action: none;
     }
     .font-script {
       font-family: 'Great Vibes', cursive;
@@ -37,21 +40,30 @@
     .font-serif-festive {
       font-family: 'Playfair Display', serif;
     }
-    /* Brillo dorado sutil para el texto central */
+    /* Brillo dorado animado para el título principal */
     .gold-shimmer {
       background: linear-gradient(135deg, #fff5d6 0%, #f6d365 35%, #fda085 65%, #fff5d6 100%);
       background-size: 200% auto;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       animation: shimmer 6s linear infinite;
-      filter: drop-shadow(0 4px 18px rgba(246, 211, 101, 0.25));
+      filter: drop-shadow(0 4px 18px rgba(246, 211, 101, 0.35));
     }
     @keyframes shimmer {
       to {
         background-position: 200% center;
       }
     }
-    /* Animación de pulso suave al sacudir */
+    /* Resplandor dorado sutil y flotación suave para el emblema institucional */
+    .logo-glow {
+      filter: drop-shadow(0 0 18px rgba(252, 211, 77, 0.48)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+      animation: floatLogo 5s ease-in-out infinite;
+    }
+    @keyframes floatLogo {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    /* Animación de pulso al sacudir */
     @keyframes popBanner {
       0% { transform: scale(1); }
       35% { transform: scale(1.06); }
@@ -60,19 +72,66 @@
     .shake-pop {
       animation: popBanner 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
+    /* Barras ecualizadoras animadas cuando suena la música */
+    @keyframes eqBar {
+      0%, 100% { height: 4px; }
+      50% { height: 14px; }
+    }
+    .eq-playing span:nth-child(1) { animation: eqBar 0.6s ease-in-out infinite; }
+    .eq-playing span:nth-child(2) { animation: eqBar 0.45s ease-in-out infinite 0.15s; }
+    .eq-playing span:nth-child(3) { animation: eqBar 0.7s ease-in-out infinite 0.3s; }
   </style>
 </head>
-<body class="relative w-full h-full">
+<body class="relative w-screen h-screen overflow-hidden border border-amber-400/20">
 
-  <!-- Lienzo principal de física y pelotitas navideñas -->
-  <canvas id="sim-canvas"></canvas>
+  <!-- Lienzo principal de física y esferas navideñas (z-index: 1) -->
+  <canvas id="canvas"></canvas>
 
-  <!-- Mensaje central navideño (pointer-events-none para interactuar con las pelotitas detrás/encima) -->
-  <div id="greeting-overlay" class="pointer-events-none fixed inset-0 flex flex-col items-center justify-center px-4 text-center z-10">
-    <div id="greeting-card" class="max-w-2xl px-6 py-7 sm:px-10 sm:py-9 rounded-3xl bg-black/25 backdrop-blur-[3px] border border-amber-200/15 shadow-2xl transition-transform duration-300">
-      <!-- Estrella decorativa superior -->
-      <div class="flex justify-center mb-2">
-        <svg class="w-9 h-9 sm:w-11 sm:h-11 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.75)]" viewBox="0 0 24 24" fill="currentColor">
+  <!-- Reproductor de Audio Flotante en la esquina superior derecha -->
+  <div class="fixed top-4 right-4 z-30 pointer-events-auto flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-black/55 backdrop-blur-md border border-amber-300/35 shadow-xl">
+    <button id="btn-audio" type="button" aria-label="Reproducir o pausar música navideña"
+      class="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-emerald-950 shadow-md transition cursor-pointer">
+      <!-- Icono Play -->
+      <svg id="icon-play" class="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+      <!-- Icono Pause (oculto por defecto) -->
+      <svg id="icon-pause" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+      </svg>
+    </button>
+
+    <div class="flex flex-col pr-1 text-left">
+      <div class="flex items-center gap-1.5">
+        <span id="audio-label" class="text-xs font-semibold text-amber-100 leading-none">Música Navideña</span>
+        <!-- Indicador ecualizador -->
+        <div id="eq-bars" class="flex items-end gap-[2px] h-3.5 opacity-40">
+          <span class="w-[2.5px] h-1 bg-amber-300 rounded-full"></span>
+          <span class="w-[2.5px] h-1 bg-amber-300 rounded-full"></span>
+          <span class="w-[2.5px] h-1 bg-amber-300 rounded-full"></span>
+        </div>
+      </div>
+      <span id="audio-status" class="text-[10px] text-emerald-200/80 leading-tight mt-0.5">Pausado</span>
+    </div>
+  </div>
+
+  <!-- Capa central con Logo y Saludo Festivo (pointer-events-none para que el ratón/dedo siempre mueva las pelotitas) -->
+  <div id="greeting-overlay" class="pointer-events-none fixed inset-0 flex flex-col items-center justify-between py-6 sm:py-8 px-4 text-center z-10">
+    
+    <!-- 1. Logo Institucional en la parte superior central -->
+    <div class="mt-20 sm:mt-20 md:mt-12 flex flex-col items-center">
+      <img
+        src="https://i.postimg.cc/mrzKyNGB/Emblema-Club-Legislativo-La-Rioja-TRANSPARENTE.png"
+        alt="Emblema Club Legislativo La Rioja"
+        class="w-44 h-44 sm:w-44 sm:h-44 md:w-48 md:h-48 object-contain logo-glow"
+        onerror="this.style.display='none'"
+      />
+    </div>
+
+    <!-- 2. Mensaje Central Festivo -->
+    <div id="greeting-card" class="my-auto max-w-2xl px-6 py-6 sm:px-10 sm:py-8 rounded-3xl bg-black/25 backdrop-blur-[2px] border border-amber-200/20 shadow-2xl transition-transform duration-300">
+      <div class="flex justify-center mb-1.5">
+        <svg class="w-8 h-8 sm:w-10 sm:h-10 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.75)]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 1.75l2.68 6.82 7.32.45-5.64 4.67 1.82 7.11L12 16.92l-6.18 3.88 1.82-7.11L2 9.02l7.32-.45L12 1.75z"/>
         </svg>
       </div>
@@ -81,52 +140,65 @@
         ¡Felices Fiestas!
       </h1>
 
-      <div class="w-28 sm:w-40 h-[1.5px] mx-auto my-3 sm:my-4 bg-gradient-to-r from-transparent via-amber-300/70 to-transparent"></div>
+      <div class="w-28 sm:w-44 h-[1.5px] mx-auto my-2.5 sm:my-3.5 bg-gradient-to-r from-transparent via-amber-300/80 to-transparent"></div>
 
-      <p class="font-serif-festive italic text-lg sm:text-2xl md:text-3xl text-amber-50/95 tracking-wide drop-shadow">
+      <p class="font-serif-festive italic text-lg sm:text-2xl md:text-3xl text-amber-50 tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
         les desea el <span class="font-semibold not-italic text-amber-300">Club Legislativo</span>
       </p>
 
-      <p id="mobile-hint" class="mt-3 text-xs sm:text-sm text-emerald-100/70 font-normal">
-        Toca, arrastra o sacude tu celular para mover las esferas navideñas
+      <p id="mobile-hint" class="mt-2.5 text-xs sm:text-sm text-emerald-100/80 font-normal drop-shadow">
+        Toca, arrastra o sacude tu celular para mover las pelotitas navideñas
       </p>
     </div>
+
+    <!-- Espaciador inferior -->
+    <div class="h-12 sm:h-14"></div>
   </div>
 
-  <!-- Notificación flotante tipo toast (reemplazo elegante sin alert) -->
-  <div id="toast-msg" class="fixed top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-300 px-4 py-2 rounded-full bg-emerald-950/90 border border-amber-300/40 text-amber-100 text-xs sm:text-sm shadow-lg backdrop-blur-md whitespace-nowrap">
-    ¡Sensor de movimiento activado! Sacude tu teléfono
+  <!-- Notificación flotante tipo toast -->
+  <div id="toast-msg" class="fixed top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-300 px-4 py-2 rounded-full bg-emerald-950/90 border border-amber-300/40 text-amber-100 text-xs sm:text-sm shadow-lg backdrop-blur-md whitespace-nowrap">
+    ¡Sensor de movimiento activado!
   </div>
 
-  <!-- Barra de controles minimalista inferior -->
-  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-2.5 px-3 py-2 rounded-full bg-black/45 backdrop-blur-md border border-white/15 shadow-2xl max-w-[94vw]">
-    <!-- Botón para activar sensor de movimiento en móviles (iOS / Android) -->
+  <!-- Barra de controles inferior -->
+  <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-wrap items-center justify-center gap-2 px-3 py-2 rounded-full bg-black/55 backdrop-blur-md border border-white/15 shadow-2xl max-w-[95vw]">
+    <!-- Botón para activar sensor de movimiento en móviles (iOS 13+ / Android) -->
     <button id="btn-motion" type="button" class="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-amber-500/20 hover:bg-amber-500/35 active:scale-95 border border-amber-300/40 text-amber-200 text-xs sm:text-sm font-medium transition cursor-pointer">
       <span>📱</span>
-      <span id="btn-motion-text">Activar agitado</span>
+      <span id="btn-motion-text">Activar sensor</span>
     </button>
 
-    <!-- Botón manual de sacudir (útil en escritorio o para probar el impulso) -->
-    <button id="btn-shake" type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-red-600/85 to-rose-700/85 hover:from-red-500 hover:to-rose-600 active:scale-95 border border-red-300/30 text-white text-xs sm:text-sm font-semibold shadow-md transition cursor-pointer">
+    <!-- Botón manual de sacudir -->
+    <button id="btn-shake" type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-red-600/90 to-rose-700/90 hover:from-red-500 hover:to-rose-600 active:scale-95 border border-red-300/35 text-white text-xs sm:text-sm font-semibold shadow-md transition cursor-pointer">
       <span>🎄</span>
       <span>Sacudir</span>
     </button>
 
-    <!-- Botón para reiniciar o agregar pelotitas -->
-    <button id="btn-reset" type="button" title="Reiniciar esferas" class="flex items-center gap-1 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 border border-white/15 text-emerald-100 text-xs sm:text-sm font-medium transition cursor-pointer">
+    <!-- Botón reiniciar -->
+    <button id="btn-reset" type="button" title="Reiniciar pelotitas" class="flex items-center gap-1 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 border border-white/15 text-emerald-100 text-xs sm:text-sm font-medium transition cursor-pointer">
       <span>✨</span>
       <span class="hidden sm:inline">Reiniciar</span>
     </button>
   </div>
 
-  <script>
-    /**
-     * Tarjeta Navideña Interactiva - Club Legislativo
-     * Simulación 2D de esferas navideñas con texturas PNG generadas proceduralmente,
-     * colisiones elásticas entre esferas, repulsión por cursor/dedo y respuesta a sacudidas (devicemotion).
-     */
 
-    const canvas = document.getElementById('sim-canvas');
+
+
+
+
+  <audio id="miAudio" preload="auto" loop>
+    <source src="https://raw.githubusercontent.com/intelliwebs/mp3/main/Mariah%20Carey%20-%20All%20I%20Want%20for%20Christmas%20Is%20You%20%28Make%20My%20Wish%20Come%20True%20Edition%29.mp3" type="audio/mpeg">
+    Tu navegador no puede reproducir audio HTML5.
+  </audio>
+
+  <script>
+    // =========================================================================
+    // 🎵 AUDIO NAVIDEÑO DESDE GITHUB
+    // =========================================================================
+    const AUDIO_URL = "https://raw.githubusercontent.com/intelliwebs/mp3/main/Mariah%20Carey%20-%20All%20I%20Want%20for%20Christmas%20Is%20You%20%28Make%20My%20Wish%20Come%20True%20Edition%29.mp3";
+    // =========================================================================
+
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const greetingCard = document.getElementById('greeting-card');
     const toastEl = document.getElementById('toast-msg');
@@ -135,27 +207,38 @@
     const btnShake = document.getElementById('btn-shake');
     const btnReset = document.getElementById('btn-reset');
 
+    // Controles de audio
+    const btnAudio = document.getElementById('btn-audio');
+    const iconPlay = document.getElementById('icon-play');
+    const iconPause = document.getElementById('icon-pause');
+    const audioStatus = document.getElementById('audio-status');
+    const audioLabel = document.getElementById('audio-label');
+    const eqBars = document.getElementById('eq-bars');
+
     let width = window.innerWidth;
     let height = window.innerHeight;
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    // Estado de puntero (ratón o toque)
+    // Estado del puntero (ratón / dedo)
     const pointer = {
       x: -9999,
       y: -9999,
+      prevX: -9999,
+      prevY: -9999,
       vx: 0,
       vy: 0,
       active: false,
-      radius: 130
+      radius: 145
     };
 
-    // Colecciones de entidades
     let ornaments = [];
     let snowflakes = [];
     let sparkles = [];
-    let ornamentSprites = []; // Imágenes PNG generadas con diseño de pelotitas navideñas
+    let shockwaves = [];
+    let ornamentSprites = [];
+    let animationId = null;
 
-    // Mostrar notificación flotante no intrusiva
+    // Notificación flotante tipo toast
     let toastTimeout = null;
     function showToast(message) {
       toastEl.textContent = message;
@@ -168,404 +251,391 @@
       }, 3000);
     }
 
-    /**
-     * Genera sprites PNG de alta resolución (160x160) de distintas pelotitas navideñas
-     * con casquillo metálico, argolla superior, brillo especular y adornos festivos.
-     */
+    // =========================================================================
+    // 1. REPRODUCTOR DE AUDIO DESDE GITHUB
+    // =========================================================================
+    let isPlaying = false;
+    // Se utiliza el elemento <audio> del HTML para que el navegador
+    // gestione correctamente la carga y reproducción progresiva del MP3.
+    const audioElement = document.getElementById('miAudio');
+    audioElement.loop = true;
+    audioElement.preload = 'auto';
+
+    function updateAudioUI(playing, labelText = 'Música', statusText = '') {
+      isPlaying = playing;
+      audioLabel.textContent = labelText;
+      if (playing) {
+        iconPlay.classList.add('hidden');
+        iconPause.classList.remove('hidden');
+        eqBars.classList.remove('opacity-40');
+        eqBars.classList.add('opacity-100', 'eq-playing');
+        audioStatus.textContent = statusText || 'Sonando';
+      } else {
+        iconPause.classList.add('hidden');
+        iconPlay.classList.remove('hidden');
+        eqBars.classList.remove('opacity-100', 'eq-playing');
+        eqBars.classList.add('opacity-40');
+        audioStatus.textContent = statusText || 'Pausado';
+      }
+    }
+
+    async function toggleAudio() {
+      if (isPlaying) {
+        audioElement.pause();
+        updateAudioUI(false, 'Mariah Carey', 'Pausado');
+        return;
+      }
+
+      try {
+        await audioElement.play();
+        updateAudioUI(true, 'Mariah Carey', 'Sonando');
+      } catch (err) {
+        updateAudioUI(false, 'Mariah Carey', 'No se pudo cargar el audio');
+        console.error('Error al reproducir el MP3:', err);
+        showToast('No se pudo reproducir la canción. Verifica el enlace de GitHub.');
+      }
+    }
+
+    audioElement.addEventListener('play', () => {
+      updateAudioUI(true, 'Mariah Carey', 'Sonando');
+    });
+
+    audioElement.addEventListener('pause', () => {
+      if (!audioElement.ended) updateAudioUI(false, 'Mariah Carey', 'Pausado');
+    });
+
+    audioElement.addEventListener('waiting', () => {
+      audioStatus.textContent = 'Cargando canción…';
+    });
+
+    audioElement.addEventListener('canplay', () => {
+      if (!audioElement.paused) audioStatus.textContent = 'Sonando';
+    });
+
+    audioElement.addEventListener('ended', () => {
+      updateAudioUI(false, 'Mariah Carey', 'Finalizado');
+    });
+
+    audioElement.addEventListener('error', () => {
+      updateAudioUI(false, 'Mariah Carey', 'Error de audio');
+      console.error('No se pudo cargar el MP3. Comprueba que el repositorio sea público y que el archivo exista.');
+      showToast('No se pudo cargar la canción. Comprueba el archivo de GitHub.');
+    });
+
+    btnAudio.addEventListener('click', toggleAudio);
+    // =========================================================================
+    // 2. GENERACIÓN DE SPRITES DE ESFERAS NAVIDEÑAS BRILLANTES EN CANVAS
+    // =========================================================================
     function createOrnamentSprites() {
       const themes = [
-        {
-          name: 'crimson-gold',
-          base1: '#ff4d5a',
-          base2: '#b80d22',
-          base3: '#59020d',
-          accent: '#ffd86b',
-          pattern: 'snowflake'
-        },
-        {
-          name: 'emerald-gold',
-          base1: '#2dd48f',
-          base2: '#0b7a4b',
-          base3: '#033821',
-          accent: '#ffe082',
-          pattern: 'bands'
-        },
-        {
-          name: 'royal-gold',
-          base1: '#ffe27a',
-          base2: '#d99616',
-          base3: '#6e4500',
-          accent: '#ffffff',
-          pattern: 'stars'
-        },
-        {
-          name: 'sapphire-ice',
-          base1: '#56b4ff',
-          base2: '#1456a8',
-          base3: '#06204a',
-          accent: '#e0f4ff',
-          pattern: 'snowflake'
-        },
-        {
-          name: 'candy-ruby',
-          base1: '#ff758f',
-          base2: '#c9184a',
-          base3: '#590d22',
-          accent: '#fff0f3',
-          pattern: 'stripes'
-        },
-        {
-          name: 'pearl-champagne',
-          base1: '#fff8eb',
-          base2: '#e3c598',
-          base3: '#8c6d46',
-          accent: '#d62828',
-          pattern: 'dots'
-        }
+        { name: 'Rojo Carmesí', base: '#dc2626', light: '#fca5a5', dark: '#7f1d1d', accent: '#fde047', pattern: 'snowflake' },
+        { name: 'Verde Esmeralda', base: '#059669', light: '#6ee7b7', dark: '#064e3b', accent: '#fef08a', pattern: 'band' },
+        { name: 'Dorado Imperial', base: '#d97706', light: '#fef08a', dark: '#78350f', accent: '#ffffff', pattern: 'stars' },
+        { name: 'Azul Real', base: '#2563eb', light: '#93c5fd', dark: '#1e3a8a', accent: '#fde68a', pattern: 'snowflake' },
+        { name: 'Púrpura Festivo', base: '#7c3aed', light: '#c4b5fd', dark: '#4c1d95', accent: '#fde047', pattern: 'band' },
+        { name: 'Rojo Rubí', base: '#b91c1c', light: '#fecaca', dark: '#450a0a', accent: '#facc15', pattern: 'stars' }
       ];
 
-      const size = 180;
-      const center = size / 2;
-      const ballRadius = 66;
-      const ballCenterY = center + 8;
+      const spriteSize = 220;
+      const center = spriteSize / 2;
+      const ballRadius = 78;
 
-      return themes.map((theme) => {
+      ornamentSprites = themes.map((theme) => {
         const off = document.createElement('canvas');
-        off.width = size;
-        off.height = size;
+        off.width = spriteSize;
+        off.height = spriteSize;
         const octx = off.getContext('2d');
 
-        // 1. Argolla metálica superior
+        // 1. Argolla superior dorada
         octx.save();
-        octx.strokeStyle = '#f6d365';
+        octx.strokeStyle = '#fbbf24';
         octx.lineWidth = 4.5;
         octx.beginPath();
-        octx.arc(center, ballCenterY - ballRadius - 13, 8, 0, Math.PI * 2);
+        octx.arc(center, center - ballRadius - 16, 8, 0, Math.PI * 2);
         octx.stroke();
 
-        // 2. Casquillo dorado de la esfera
+        // 2. Casquillo metálico dorado
         const capGrad = octx.createLinearGradient(center - 15, 0, center + 15, 0);
-        capGrad.addColorStop(0, '#9c6b19');
-        capGrad.addColorStop(0.35, '#ffe58f');
-        capGrad.addColorStop(0.7, '#d49b27');
-        capGrad.addColorStop(1, '#7a500c');
+        capGrad.addColorStop(0, '#92400e');
+        capGrad.addColorStop(0.35, '#fde047');
+        capGrad.addColorStop(0.7, '#d97706');
+        capGrad.addColorStop(1, '#78350f');
         octx.fillStyle = capGrad;
         octx.beginPath();
-        octx.roundRect(center - 15, ballCenterY - ballRadius - 8, 30, 14, 4);
+        octx.roundRect(center - 14, center - ballRadius - 10, 28, 15, 4);
         octx.fill();
         octx.restore();
 
-        // 3. Cuerpo principal de la esfera navideña
+        // 3. Cuerpo esférico principal con sombreado 3D
         octx.save();
         octx.beginPath();
-        octx.arc(center, ballCenterY, ballRadius, 0, Math.PI * 2);
-        octx.clip();
+        octx.arc(center, center + 4, ballRadius, 0, Math.PI * 2);
+        octx.closePath();
 
-        // Gradiente esférico 3D
         const sphereGrad = octx.createRadialGradient(
           center - ballRadius * 0.35,
-          ballCenterY - ballRadius * 0.35,
+          center - ballRadius * 0.35,
           ballRadius * 0.08,
           center,
-          ballCenterY,
+          center + 4,
           ballRadius
         );
-        sphereGrad.addColorStop(0, theme.base1);
-        sphereGrad.addColorStop(0.65, theme.base2);
-        sphereGrad.addColorStop(1, theme.base3);
-        octx.fillStyle = sphereGrad;
-        octx.fillRect(0, 0, size, size);
+        sphereGrad.addColorStop(0, theme.light);
+        sphereGrad.addColorStop(0.32, theme.base);
+        sphereGrad.addColorStop(0.85, theme.dark);
+        sphereGrad.addColorStop(1, '#090d16');
 
-        // 4. Patrones decorativos internos según el estilo
+        octx.fillStyle = sphereGrad;
+        octx.fill();
+        octx.clip();
+
+        // 4. Diseños decorativos internos según patrón
         octx.strokeStyle = theme.accent;
         octx.fillStyle = theme.accent;
-        octx.globalAlpha = 0.82;
+        octx.globalAlpha = 0.78;
 
-        if (theme.pattern === 'bands') {
-          // Bandas doradas festivas horizontales y zig-zag
-          octx.lineWidth = 4;
+        if (theme.pattern === 'band') {
+          // Banda ecuatorial dorada con ondas
+          octx.lineWidth = 6;
           octx.beginPath();
-          octx.moveTo(center - ballRadius, ballCenterY - 16);
-          octx.lineTo(center + ballRadius, ballCenterY - 16);
-          octx.moveTo(center - ballRadius, ballCenterY + 16);
-          octx.lineTo(center + ballRadius, ballCenterY + 16);
+          octx.moveTo(center - ballRadius, center - 8);
+          octx.quadraticCurveTo(center, center + 6, center + ballRadius, center - 8);
           octx.stroke();
 
-          // Puntos brillantes en el centro
+          octx.beginPath();
+          octx.moveTo(center - ballRadius, center + 16);
+          octx.quadraticCurveTo(center, center + 30, center + ballRadius, center + 16);
+          octx.stroke();
+
           for (let x = -48; x <= 48; x += 24) {
             octx.beginPath();
-            octx.arc(center + x, ballCenterY, 4, 0, Math.PI * 2);
+            octx.arc(center + x, center + 6, 3.5, 0, Math.PI * 2);
             octx.fill();
           }
         } else if (theme.pattern === 'snowflake') {
-          // Copo de nieve estilizado en el centro
-          octx.lineWidth = 3.2;
+          // Copo de nieve cristalino central
+          octx.lineWidth = 3.5;
           octx.lineCap = 'round';
+          const cy = center + 6;
           for (let i = 0; i < 6; i++) {
-            const angle = (i * Math.PI) / 3;
-            const dx = Math.cos(angle) * 30;
-            const dy = Math.sin(angle) * 30;
+            const ang = (i * Math.PI) / 3;
+            const dx = Math.cos(ang) * 32;
+            const dy = Math.sin(ang) * 32;
             octx.beginPath();
-            octx.moveTo(center, ballCenterY);
-            octx.lineTo(center + dx, ballCenterY + dy);
+            octx.moveTo(center, cy);
+            octx.lineTo(center + dx, cy + dy);
             octx.stroke();
 
             // Ramitas del copo
-            const bx = center + Math.cos(angle) * 18;
-            const by = ballCenterY + Math.sin(angle) * 18;
+            const bx = center + Math.cos(ang) * 18;
+            const by = cy + Math.sin(ang) * 18;
             octx.beginPath();
             octx.moveTo(bx, by);
-            octx.lineTo(bx + Math.cos(angle + 0.6) * 9, by + Math.sin(angle + 0.6) * 9);
+            octx.lineTo(bx + Math.cos(ang + 0.6) * 9, by + Math.sin(ang + 0.6) * 9);
             octx.moveTo(bx, by);
-            octx.lineTo(bx + Math.cos(angle - 0.6) * 9, by + Math.sin(angle - 0.6) * 9);
+            octx.lineTo(bx + Math.cos(ang - 0.6) * 9, by + Math.sin(ang - 0.6) * 9);
             octx.stroke();
           }
         } else if (theme.pattern === 'stars') {
-          // Constelación de estrellitas navideñas
+          // Constelación de estrellitas brillantes
           const starOffsets = [
-            [0, 0, 12],
-            [-30, -20, 7],
-            [32, -16, 7],
-            [-24, 26, 7],
-            [26, 24, 8]
+            { x: -26, y: -14, r: 9 },
+            { x: 24, y: -6, r: 11 },
+            { x: -12, y: 26, r: 10 },
+            { x: 26, y: 28, r: 7 },
+            { x: 0, y: -32, r: 7 }
           ];
-          starOffsets.forEach(([ox, oy, sr]) => {
-            drawMiniStar(octx, center + ox, ballCenterY + oy, 5, sr, sr * 0.45);
+          starOffsets.forEach((st) => {
+            drawMiniStar(octx, center + st.x, center + st.y + 4, 5, st.r, st.r * 0.42);
+            octx.fill();
           });
-        } else if (theme.pattern === 'stripes') {
-          // Franjas diagonales estilo bastón de caramelo
-          octx.lineWidth = 9;
-          for (let offset = -90; offset <= 90; offset += 34) {
-            octx.beginPath();
-            octx.moveTo(center + offset - 40, ballCenterY - 70);
-            octx.lineTo(center + offset + 40, ballCenterY + 70);
-            octx.stroke();
-          }
-        } else if (theme.pattern === 'dots') {
-          // Lunares festivos
-          for (let row = -2; row <= 2; row++) {
-            for (let col = -2; col <= 2; col++) {
-              if ((row + col) % 2 === 0) {
-                octx.beginPath();
-                octx.arc(center + col * 24, ballCenterY + row * 24, 5, 0, Math.PI * 2);
-                octx.fill();
-              }
-            }
-          }
         }
 
-        // 5. Sombra inferior interna para profundidad
-        const rimShadow = octx.createRadialGradient(
-          center,
-          ballCenterY,
-          ballRadius * 0.65,
-          center,
-          ballCenterY,
-          ballRadius
+        // 5. Reflejo especular de cristal (brillo superior izquierdo)
+        octx.globalAlpha = 0.58;
+        const glossGrad = octx.createRadialGradient(
+          center - 28,
+          center - 28,
+          2,
+          center - 24,
+          center - 24,
+          34
         );
-        rimShadow.addColorStop(0, 'rgba(0,0,0,0)');
-        rimShadow.addColorStop(1, 'rgba(0,0,0,0.42)');
-        octx.globalAlpha = 1;
-        octx.fillStyle = rimShadow;
-        octx.fillRect(0, 0, size, size);
-
-        // 6. Reflejo especular brillante (brillo de cristal)
-        octx.save();
-        octx.translate(center - ballRadius * 0.36, ballCenterY - ballRadius * 0.36);
-        octx.rotate(-Math.PI / 4);
-        const glossGrad = octx.createRadialGradient(0, 0, 1, 0, 0, 24);
-        glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.88)');
-        glossGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.32)');
-        glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        glossGrad.addColorStop(0, '#ffffff');
+        glossGrad.addColorStop(1, 'rgba(255,255,255,0)');
         octx.fillStyle = glossGrad;
         octx.beginPath();
-        octx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
+        octx.ellipse(center - 26, center - 26, 24, 14, -Math.PI / 4, 0, Math.PI * 2);
         octx.fill();
-        octx.restore();
+
+        // Luz de rebote inferior derecha
+        octx.globalAlpha = 0.25;
+        octx.strokeStyle = '#ffffff';
+        octx.lineWidth = 4;
+        octx.beginPath();
+        octx.arc(center, center + 4, ballRadius - 5, 0.2, 1.3);
+        octx.stroke();
 
         octx.restore();
-
-        // Convertir a imagen PNG real (Data URL) para cumplir con sprites PNG nítidos
-        const img = new Image();
-        img.src = off.toDataURL('image/png');
-        return img;
+        return off;
       });
     }
 
-    function drawMiniStar(context, cx, cy, spikes, outerR, innerR) {
+    function drawMiniStar(context, cx, cy, spikes, outerRadius, innerRadius) {
       let rot = (Math.PI / 2) * 3;
-      let x = cx;
-      let y = cy;
-      const step = Math.PI / spikes;
-
+      let step = Math.PI / spikes;
       context.beginPath();
-      context.moveTo(cx, cy - outerR);
+      context.moveTo(cx, cy - outerRadius);
       for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerR;
-        y = cy + Math.sin(rot) * outerR;
-        context.lineTo(x, y);
+        context.lineTo(cx + Math.cos(rot) * outerRadius, cy + Math.sin(rot) * outerRadius);
         rot += step;
-
-        x = cx + Math.cos(rot) * innerR;
-        y = cy + Math.sin(rot) * innerR;
-        context.lineTo(x, y);
+        context.lineTo(cx + Math.cos(rot) * innerRadius, cy + Math.sin(rot) * innerRadius);
         rot += step;
       }
-      context.lineTo(cx, cy - outerR);
       context.closePath();
-      context.fill();
     }
 
-    /**
-     * Clase que representa cada pelotita navideña con física 2D
-     */
+    // =========================================================================
+    // 3. CLASE DE PELOTITA NAVIDEÑA CON FÍSICA ELÁSTICA Y ROTACIÓN
+    // =========================================================================
     class OrnamentBall {
       constructor(x, y, radius, sprite) {
         this.x = x;
         this.y = y;
         this.radius = radius;
-        this.mass = radius * radius * 0.05;
+        this.mass = radius * radius;
         this.sprite = sprite;
 
-        // Velocidad inicial suave flotante
+        // Velocidad inicial continua para que siempre floten y reboten
         const angle = Math.random() * Math.PI * 2;
-        const speed = 0.6 + Math.random() * 1.4;
+        const speed = 1.4 + Math.random() * 2.1;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
 
-        // Rotación suave
-        this.rotation = (Math.random() - 0.5) * 0.5;
-        this.vRot = (Math.random() - 0.5) * 0.015;
+        this.angle = (Math.random() - 0.5) * 0.6;
+        this.angularVelocity = (Math.random() - 0.5) * 0.03;
       }
 
       update() {
-        // Flotación orgánica leve + resistencia del aire (damping suave)
-        this.vx *= 0.992;
-        this.vy *= 0.992;
-
-        // Mantener un movimiento ambiental suave para que nunca queden estáticas
-        const speed = Math.hypot(this.vx, this.vy);
-        if (speed < 0.45) {
-          const nudgeAngle = Math.random() * Math.PI * 2;
-          this.vx += Math.cos(nudgeAngle) * 0.03;
-          this.vy += Math.sin(nudgeAngle) * 0.03;
-        }
-
-        // Limitar velocidad máxima tras una sacudida fuerte
-        const maxSpeed = 28;
-        if (speed > maxSpeed) {
-          this.vx = (this.vx / speed) * maxSpeed;
-          this.vy = (this.vy / speed) * maxSpeed;
-        }
-
-        // Repulsión suave e impulso con el cursor / dedo (estilo CodePen vxMYEz)
+        // 1. Repulsión suave al acercar el cursor o dedo
         if (pointer.active) {
           const dx = this.x - pointer.x;
           const dy = this.y - pointer.y;
           const dist = Math.hypot(dx, dy);
           const minDist = this.radius + pointer.radius;
 
-          if (dist < minDist && dist > 0.001) {
-            const force = (minDist - dist) / minDist;
+          if (dist < minDist && dist > 0.01) {
             const nx = dx / dist;
             const ny = dy / dist;
-
-            // Empuje radial + arrastre direccional del movimiento del dedo/ratón
-            this.vx += nx * force * 2.1 + pointer.vx * 0.06 * force;
-            this.vy += ny * force * 2.1 + pointer.vy * 0.06 * force;
-            this.vRot += (nx * pointer.vy - ny * pointer.vx) * 0.0005;
+            const force = (1 - dist / minDist) * 1.45;
+            this.vx += nx * force + pointer.vx * 0.04;
+            this.vy += ny * force + pointer.vy * 0.04;
+            this.angularVelocity += (nx * pointer.vy - ny * pointer.vx) * 0.0012;
           }
         }
 
-        // Actualizar posición y ángulo
+        // 2. Amortiguación muy leve y mantenimiento de energía mínima para movimiento continuo
+        this.vx *= 0.996;
+        this.vy *= 0.996;
+        this.angularVelocity *= 0.985;
+
+        const currentSpeed = Math.hypot(this.vx, this.vy);
+        const minCruiseSpeed = 1.15;
+        const maxSpeed = 24;
+
+        if (currentSpeed < minCruiseSpeed) {
+          if (currentSpeed > 0.001) {
+            const boost = minCruiseSpeed / currentSpeed;
+            this.vx *= boost;
+            this.vy *= boost;
+          } else {
+            const randAng = Math.random() * Math.PI * 2;
+            this.vx = Math.cos(randAng) * minCruiseSpeed;
+            this.vy = Math.sin(randAng) * minCruiseSpeed;
+          }
+        } else if (currentSpeed > maxSpeed) {
+          const scale = maxSpeed / currentSpeed;
+          this.vx *= scale;
+          this.vy *= scale;
+        }
+
+        // 3. Actualizar posición y rotación
         this.x += this.vx;
         this.y += this.vy;
-        this.rotation += this.vRot + this.vx * 0.0035;
-        this.vRot *= 0.985;
+        this.angle += this.angularVelocity;
 
-        // Rebote elástico en los bordes de la pantalla
-        const bounce = 0.86;
+        // 4. Rebote elástico contra los bordes de la pantalla
+        const restitution = 0.92;
         if (this.x - this.radius < 0) {
           this.x = this.radius;
-          this.vx = Math.abs(this.vx) * bounce;
-          this.vRot = this.vy * 0.004;
+          this.vx = Math.abs(this.vx) * restitution;
+          this.angularVelocity += this.vy * 0.0015;
         } else if (this.x + this.radius > width) {
           this.x = width - this.radius;
-          this.vx = -Math.abs(this.vx) * bounce;
-          this.vRot = -this.vy * 0.004;
+          this.vx = -Math.abs(this.vx) * restitution;
+          this.angularVelocity -= this.vy * 0.0015;
         }
 
         if (this.y - this.radius < 0) {
           this.y = this.radius;
-          this.vy = Math.abs(this.vy) * bounce;
+          this.vy = Math.abs(this.vy) * restitution;
+          this.angularVelocity -= this.vx * 0.0015;
         } else if (this.y + this.radius > height) {
           this.y = height - this.radius;
-          this.vy = -Math.abs(this.vy) * bounce;
+          this.vy = -Math.abs(this.vy) * restitution;
+          this.angularVelocity += this.vx * 0.0015;
         }
       }
 
       draw(context) {
         context.save();
         context.translate(this.x, this.y);
-        context.rotate(this.rotation);
+        context.rotate(this.angle);
 
-        // Sombra suave proyectada
-        context.shadowColor = 'rgba(0, 0, 0, 0.38)';
-        context.shadowBlur = 12;
-        context.shadowOffsetY = 6;
+        // Sombra ambiental sutil
+        context.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        context.shadowBlur = 14;
+        context.shadowOffsetY = 8;
 
-        // Dibujar el sprite PNG escalado (compensando el casquillo superior del canvas 180x180)
-        const drawScale = (this.radius * 2) / 132;
-        const spriteSize = 180 * drawScale;
-        const offsetY = -8 * drawScale;
-
-        if (this.sprite && this.sprite.complete) {
-          context.drawImage(
-            this.sprite,
-            -spriteSize / 2,
-            -spriteSize / 2 + offsetY,
-            spriteSize,
-            spriteSize
-          );
-        } else {
-          // Fallback circular inmediato mientras carga el PNG en el primer frame
-          context.beginPath();
-          context.arc(0, 0, this.radius, 0, Math.PI * 2);
-          context.fillStyle = '#c9184a';
-          context.fill();
-        }
-
+        // El sprite tiene tamaño 220 con esfera de radio 78 -> factor de escala = (this.radius / 78) * 220
+        const drawSize = this.radius * (220 / 78);
+        context.drawImage(
+          this.sprite,
+          -drawSize / 2,
+          -drawSize / 2 - (4 * (this.radius / 78)),
+          drawSize,
+          drawSize
+        );
         context.restore();
       }
     }
 
-    /**
-     * Resuelve colisiones elásticas entre todas las pelotitas navideñas
-     */
+    // Colisión elástica 2D con conservación de momento y transferencia de giro
     function resolveBallCollisions() {
-      const restitution = 0.88;
+      const restitution = 0.94;
       for (let i = 0; i < ornaments.length; i++) {
-        const b1 = ornaments[i];
         for (let j = i + 1; j < ornaments.length; j++) {
+          const b1 = ornaments[i];
           const b2 = ornaments[j];
+
           const dx = b2.x - b1.x;
           const dy = b2.y - b1.y;
           const dist = Math.hypot(dx, dy);
           const minDist = b1.radius + b2.radius;
 
           if (dist < minDist && dist > 0.0001) {
-            // Separar superposición proporcional a la masa
-            const overlap = minDist - dist;
             const nx = dx / dist;
             const ny = dy / dist;
-            const totalMass = b1.mass + b2.mass;
 
+            // Separar esferas solapadas proporcionalmente a su masa
+            const overlap = minDist - dist;
+            const totalMass = b1.mass + b2.mass;
             b1.x -= nx * overlap * (b2.mass / totalMass);
             b1.y -= ny * overlap * (b2.mass / totalMass);
             b2.x += nx * overlap * (b1.mass / totalMass);
             b2.y += ny * overlap * (b1.mass / totalMass);
 
-            // Velocidad relativa a lo largo de la normal
+            // Velocidad relativa
             const rvx = b2.vx - b1.vx;
             const rvy = b2.vy - b1.vy;
             const velAlongNormal = rvx * nx + rvy * ny;
@@ -580,123 +650,270 @@
               b2.vx += impulseX / b2.mass;
               b2.vy += impulseY / b2.mass;
 
-              // Efecto de giro al chocar
-              b1.vRot += (nx * rvy - ny * rvx) * 0.0012;
-              b2.vRot -= (nx * rvy - ny * rvx) * 0.0012;
+              // Transferencia de rotación por fricción tangencial
+              const tx = -ny;
+              const ty = nx;
+              const tangentVel = rvx * tx + rvy * ty;
+              b1.angularVelocity += (tangentVel * 0.0018);
+              b2.angularVelocity -= (tangentVel * 0.0018);
+
+              // Destellos dorados si el choque es enérgico
+              if (Math.abs(velAlongNormal) > 3.2) {
+                const contactX = b1.x + nx * b1.radius;
+                const contactY = b1.y + ny * b1.radius;
+                spawnSparkles(contactX, contactY, 5);
+              }
             }
           }
         }
       }
     }
 
-    /**
-     * Crea destellos dorados al hacer clic o sacudir
-     */
-    function spawnSparkles(x, y, count = 16) {
-      const colors = ['#ffe58f', '#ffd666', '#ffffff', '#ff7875', '#95de64'];
+    // =========================================================================
+    // 4. NIEVE DE FONDO, DESTELLOS DORADOS Y ONDAS EXPANSIVAS
+    // =========================================================================
+    function initSnowflakes() {
+      const count = Math.min(85, Math.floor((width * height) / 14000));
+      snowflakes = Array.from({ length: count }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: 1.2 + Math.random() * 2.8,
+        speedY: 0.45 + Math.random() * 1.1,
+        drift: Math.random() * Math.PI * 2,
+        alpha: 0.25 + Math.random() * 0.55
+      }));
+    }
+
+    function spawnSparkles(x, y, count = 10) {
       for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 1.5 + Math.random() * 5.5;
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 1.5 + Math.random() * 4.5;
         sparkles.push({
           x,
           y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 2 + Math.random() * 3.5,
-          alpha: 1,
-          decay: 0.018 + Math.random() * 0.02,
-          color: colors[Math.floor(Math.random() * colors.length)]
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          size: 1.8 + Math.random() * 3,
+          life: 1,
+          decay: 0.022 + Math.random() * 0.02,
+          color: Math.random() > 0.3 ? '#fde047' : '#ffffff'
         });
       }
     }
 
-    /**
-     * Aplica un impulso fuerte a todas las esferas navideñas (al sacudir el celular o pulsar Sacudir)
-     */
-    function triggerShakeImpulse(intensity = 18, dirX = 0, dirY = 0) {
-      // Animar tarjeta de saludo
-      greetingCard.classList.remove('shake-pop');
-      void greetingCard.offsetWidth; // Reiniciar reflow para repetir animación
-      greetingCard.classList.add('shake-pop');
+    function triggerShockwave(x, y) {
+      shockwaves.push({ x, y, radius: 10, maxRadius: 240, alpha: 0.75 });
+      spawnSparkles(x, y, 14);
 
       ornaments.forEach((ball) => {
-        const angle = Math.random() * Math.PI * 2;
-        const burst = intensity * (0.65 + Math.random() * 0.75);
-
-        // Combinar dirección del acelerómetro (si existe) con dispersión festiva
-        ball.vx += Math.cos(angle) * burst + dirX * 0.8;
-        ball.vy += Math.sin(angle) * burst - Math.abs(dirY) * 0.6 - 4;
-        ball.vRot += (Math.random() - 0.5) * 0.25;
-      });
-
-      // Generar destellos festivos en varios puntos
-      for (let i = 0; i < 5; i++) {
-        spawnSparkles(
-          width * (0.2 + Math.random() * 0.6),
-          height * (0.2 + Math.random() * 0.6),
-          12
-        );
-      }
-
-      // Vibración háptica suave en Android si está disponible
-      if (navigator.vibrate) {
-        try {
-          navigator.vibrate([45, 30, 60]);
-        } catch (e) {
-          // Ignorar si no es soportado
+        const dx = ball.x - x;
+        const dy = ball.y - y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 280 && dist > 0.1) {
+          const strength = (1 - dist / 280) * 14;
+          ball.vx += (dx / dist) * strength;
+          ball.vy += (dy / dist) * strength;
+          ball.angularVelocity += (Math.random() - 0.5) * 0.16;
         }
-      }
+      });
     }
 
-    /**
-     * Inicializa nieve ambiental y pelotitas navideñas adaptadas al tamaño de pantalla
-     */
-    function initScene() {
+    // =========================================================================
+    // 5. INICIALIZACIÓN DE LAS PELOTITAS NAVIDEÑAS (24 A 28 ESFERAS)
+    // =========================================================================
+    function initOrnaments() {
       ornaments = [];
-      snowflakes = [];
-
-      // Cantidad adaptativa según tamaño de pantalla
-      const area = width * height;
       const isMobile = width < 640;
-      const ballCount = isMobile
-        ? Math.min(24, Math.max(15, Math.floor(area / 22000)))
-        : Math.min(38, Math.max(22, Math.floor(area / 34000)));
-
+      const count = isMobile ? 12 : 18;
       const minR = isMobile ? 20 : 24;
       const maxR = isMobile ? 36 : 46;
 
-      for (let i = 0; i < ballCount; i++) {
+      for (let i = 0; i < count; i++) {
         const radius = minR + Math.random() * (maxR - minR);
-        let x, y, tries = 0;
+        let x = radius + Math.random() * (width - radius * 2);
+        let y = radius + Math.random() * (height - radius * 2);
+
         // Evitar que nazcan encimadas
-        do {
+        for (let attempt = 0; attempt < 25; attempt++) {
+          let overlaps = false;
+          for (const other of ornaments) {
+            if (Math.hypot(x - other.x, y - other.y) < radius + other.radius + 6) {
+              overlaps = true;
+              break;
+            }
+          }
+          if (!overlaps) break;
           x = radius + Math.random() * (width - radius * 2);
           y = radius + Math.random() * (height - radius * 2);
-          tries++;
-        } while (
-          tries < 25 &&
-          ornaments.some((o) => Math.hypot(o.x - x, o.y - y) < o.radius + radius + 6)
-        );
+        }
 
         const sprite = ornamentSprites[i % ornamentSprites.length];
         ornaments.push(new OrnamentBall(x, y, radius, sprite));
       }
+    }
 
-      // Copos de nieve suaves en segundo plano
-      const snowCount = isMobile ? 45 : 85;
-      for (let i = 0; i < snowCount; i++) {
-        snowflakes.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          r: 1 + Math.random() * 2.6,
-          vy: 0.4 + Math.random() * 1.1,
-          vx: (Math.random() - 0.5) * 0.4,
-          phase: Math.random() * Math.PI * 2,
-          alpha: 0.25 + Math.random() * 0.55
-        });
+    // =========================================================================
+    // 6. DETECCIÓN DE SACUDIDA EN MÓVILES (devicemotion) + BOTÓN MANUAL
+    // =========================================================================
+    let lastShakeTime = 0;
+    let lastAccel = { x: null, y: null, z: null };
+    let motionEnabled = false;
+
+    function triggerShakeImpulse(intensity = 1) {
+      const now = Date.now();
+      if (now - lastShakeTime < 350) return;
+      lastShakeTime = now;
+
+      // Vibración háptica en dispositivos compatibles
+      if (navigator.vibrate) {
+        navigator.vibrate([60, 30, 60]);
+      }
+
+      // Animar tarjeta de saludo
+      greetingCard.classList.remove('shake-pop');
+      void greetingCard.offsetWidth;
+      greetingCard.classList.add('shake-pop');
+
+      const power = Math.min(Math.max(intensity, 0.9), 1.8) * 16;
+      ornaments.forEach((ball) => {
+        const angle = Math.random() * Math.PI * 2;
+        const kick = (0.65 + Math.random() * 0.7) * power;
+        ball.vx += Math.cos(angle) * kick;
+        ball.vy += Math.sin(angle) * kick - 3.5; // Ligero impulso hacia arriba
+        ball.angularVelocity += (Math.random() - 0.5) * 0.25;
+      });
+
+      // Lluvia de destellos dorados por la pantalla
+      for (let i = 0; i < 6; i++) {
+        spawnSparkles(
+          width * (0.15 + Math.random() * 0.7),
+          height * (0.15 + Math.random() * 0.7),
+          8
+        );
       }
     }
 
+    function handleDeviceMotion(event) {
+      const acc = event.acceleration && event.acceleration.x !== null
+        ? event.acceleration
+        : event.accelerationIncludingGravity;
+
+      if (!acc || acc.x === null) return;
+
+      if (lastAccel.x !== null) {
+        const deltaX = Math.abs(acc.x - lastAccel.x);
+        const deltaY = Math.abs(acc.y - lastAccel.y);
+        const deltaZ = Math.abs(acc.z - lastAccel.z);
+        const totalDelta = deltaX + deltaY + deltaZ;
+
+        // Umbral calibrado para sacudida firme del celular
+        const threshold = event.acceleration && event.acceleration.x !== null ? 16 : 22;
+        if (totalDelta > threshold) {
+          triggerShakeImpulse(totalDelta / threshold);
+        }
+      }
+
+      lastAccel = { x: acc.x, y: acc.y, z: acc.z };
+    }
+
+    async function enableMotionSensor() {
+      if (motionEnabled) {
+        showToast('¡El sensor ya está activo! Agita tu celular 🎄');
+        triggerShakeImpulse(1);
+        return;
+      }
+
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+          const response = await DeviceMotionEvent.requestPermission();
+          if (response === 'granted') {
+            window.addEventListener('devicemotion', handleDeviceMotion);
+            motionEnabled = true;
+            btnMotionText.textContent = 'Sensor activo';
+            btnMotion.classList.add('bg-emerald-500/25', 'border-emerald-300/50', 'text-emerald-200');
+            showToast('¡Sensor activado! Agita tu teléfono 📱✨');
+          } else {
+            showToast('Permiso denegado. Usa el botón "Sacudir" 🎄');
+          }
+        } catch (err) {
+          showToast('Usa el botón "Sacudir" para agitar las esferas 🎄');
+        }
+      } else if ('DeviceMotionEvent' in window) {
+        window.addEventListener('devicemotion', handleDeviceMotion);
+        motionEnabled = true;
+        btnMotionText.textContent = 'Sensor activo';
+        btnMotion.classList.add('bg-emerald-500/25', 'border-emerald-300/50', 'text-emerald-200');
+        showToast('¡Sensor activado! Agita tu dispositivo 📱✨');
+      } else {
+        showToast('En PC usa el botón "Sacudir" o mueve el ratón 🎄');
+        triggerShakeImpulse(1);
+      }
+    }
+
+    // En Android / navegadores que no requieren permiso explícito, enganchar desde el inicio
+    if ('DeviceMotionEvent' in window && typeof DeviceMotionEvent.requestPermission !== 'function') {
+      window.addEventListener('devicemotion', handleDeviceMotion);
+      motionEnabled = true;
+      btnMotionText.textContent = 'Sensor activo';
+    }
+
+    btnMotion.addEventListener('click', enableMotionSensor);
+    btnShake.addEventListener('click', () => triggerShakeImpulse(1.2));
+    btnReset.addEventListener('click', () => {
+      initOrnaments();
+      spawnSparkles(width / 2, height / 2, 24);
+      showToast('Pelotitas navideñas renovadas ✨');
+    });
+
+    // =========================================================================
+    // 7. INTERACCIÓN CON RATÓN Y PANTALLA TÁCTIL
+    // =========================================================================
+    function updatePointerPosition(x, y) {
+      if (pointer.prevX !== -9999) {
+        pointer.vx = x - pointer.prevX;
+        pointer.vy = y - pointer.prevY;
+      }
+      pointer.prevX = x;
+      pointer.prevY = y;
+      pointer.x = x;
+      pointer.y = y;
+      pointer.active = true;
+    }
+
+    window.addEventListener('pointermove', (e) => {
+      updatePointerPosition(e.clientX, e.clientY);
+    }, { passive: true });
+
+    window.addEventListener('pointerdown', (e) => {
+      // Ignorar si el clic fue sobre los botones o el reproductor
+      if (e.target.closest('button')) return;
+      updatePointerPosition(e.clientX, e.clientY);
+      triggerShockwave(e.clientX, e.clientY);
+    }, { passive: true });
+
+    window.addEventListener('pointerup', () => {
+      pointer.active = false;
+      pointer.prevX = -9999;
+      pointer.prevY = -9999;
+      pointer.vx = 0;
+      pointer.vy = 0;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointerPosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      pointer.active = false;
+      pointer.prevX = -9999;
+      pointer.prevY = -9999;
+    }, { passive: true });
+
+    // =========================================================================
+    // 8. BUCLE PRINCIPAL DE ANIMACIÓN Y REDIMENSIONAMIENTO
+    // =========================================================================
     function resizeCanvas() {
       width = window.innerWidth;
       height = window.innerHeight;
@@ -706,24 +923,21 @@
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Reubicar pelotitas si quedaron fuera del nuevo viewport
-      ornaments.forEach((b) => {
-        b.x = Math.min(Math.max(b.radius, b.x), width - b.radius);
-        b.y = Math.min(Math.max(b.radius, b.y), height - b.radius);
+      // Mantener las esferas dentro de los nuevos límites
+      ornaments.forEach((ball) => {
+        ball.x = Math.min(Math.max(ball.radius, ball.x), Math.max(ball.radius, width - ball.radius));
+        ball.y = Math.min(Math.max(ball.radius, ball.y), Math.max(ball.radius, height - ball.radius));
       });
     }
 
-    /**
-     * Bucle principal de animación a 60fps
-     */
     function animate() {
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Dibujar nieve ambiental de fondo
+      // 1. Dibujar copos de nieve suaves en el fondo
       snowflakes.forEach((flake) => {
-        flake.phase += 0.02;
-        flake.x += flake.vx + Math.sin(flake.phase) * 0.25;
-        flake.y += flake.vy;
+        flake.y += flake.speedY;
+        flake.drift += 0.015;
+        flake.x += Math.sin(flake.drift) * 0.45;
 
         if (flake.y > height + 5) {
           flake.y = -5;
@@ -732,13 +946,15 @@
         if (flake.x > width + 5) flake.x = -5;
         if (flake.x < -5) flake.x = width + 5;
 
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${flake.alpha})`;
         ctx.beginPath();
         ctx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${flake.alpha})`;
         ctx.fill();
+        ctx.restore();
       });
 
-      // 2. Actualizar física y colisiones de pelotitas navideñas
+      // 2. Actualizar y resolver colisiones de las pelotitas navideñas
       for (let i = 0; i < ornaments.length; i++) {
         ornaments[i].update();
       }
@@ -749,198 +965,76 @@
         ornaments[i].draw(ctx);
       }
 
-      // 4. Actualizar y dibujar destellos dorados
+      // 4. Dibujar ondas expansivas al tocar
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.radius += 11;
+        sw.alpha *= 0.92;
+        if (sw.radius >= sw.maxRadius || sw.alpha <= 0.02) {
+          shockwaves.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.strokeStyle = `rgba(253, 224, 71, ${sw.alpha})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 5. Dibujar destellos dorados
       for (let i = sparkles.length - 1; i >= 0; i--) {
         const sp = sparkles[i];
         sp.x += sp.vx;
         sp.y += sp.vy;
-        sp.vx *= 0.96;
-        sp.vy *= 0.96;
-        sp.alpha -= sp.decay;
+        sp.vx *= 0.95;
+        sp.vy *= 0.95;
+        sp.life -= sp.decay;
 
-        if (sp.alpha <= 0) {
+        if (sp.life <= 0) {
           sparkles.splice(i, 1);
           continue;
         }
 
         ctx.save();
-        ctx.globalAlpha = sp.alpha;
+        ctx.globalAlpha = sp.life;
         ctx.fillStyle = sp.color;
+        ctx.shadowColor = '#fde047';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+        ctx.arc(sp.x, sp.y, sp.size * sp.life, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
 
-      // Desvanecer velocidad del puntero suavemente
-      pointer.vx *= 0.85;
-      pointer.vy *= 0.85;
+      // Atenuar velocidad del puntero entre frames
+      pointer.vx *= 0.7;
+      pointer.vy *= 0.7;
 
-      requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
     }
 
-    // --- Eventos de Interacción (Mouse y Pantalla Táctil) ---
-    let lastPointerX = 0;
-    let lastPointerY = 0;
-
-    function updatePointerPosition(clientX, clientY) {
-      if (pointer.active) {
-        pointer.vx = clientX - lastPointerX;
-        pointer.vy = clientY - lastPointerY;
-      }
-      pointer.x = clientX;
-      pointer.y = clientY;
-      pointer.active = true;
-      lastPointerX = clientX;
-      lastPointerY = clientY;
+    function startApp() {
+      resizeCanvas();
+      createOrnamentSprites();
+      initSnowflakes();
+      initOrnaments();
+      if (animationId) cancelAnimationFrame(animationId);
+      animate();
     }
-
-    canvas.addEventListener('mousemove', (e) => {
-      updatePointerPosition(e.clientX, e.clientY);
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-      pointer.active = false;
-    });
-
-    canvas.addEventListener('mousedown', (e) => {
-      updatePointerPosition(e.clientX, e.clientY);
-      spawnSparkles(e.clientX, e.clientY, 14);
-      // Impulso radial al hacer clic
-      ornaments.forEach((ball) => {
-        const dx = ball.x - e.clientX;
-        const dy = ball.y - e.clientY;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 220 && dist > 0.1) {
-          const force = ((220 - dist) / 220) * 14;
-          ball.vx += (dx / dist) * force;
-          ball.vy += (dy / dist) * force;
-        }
-      });
-    });
-
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
-        const t = e.touches[0];
-        pointer.active = false;
-        updatePointerPosition(t.clientX, t.clientY);
-        spawnSparkles(t.clientX, t.clientY, 14);
-      }
-    }, { passive: true });
-
-    canvas.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
-        const t = e.touches[0];
-        updatePointerPosition(t.clientX, t.clientY);
-      }
-    }, { passive: true });
-
-    canvas.addEventListener('touchend', () => {
-      pointer.active = false;
-    });
-
-    // --- Detección de Sacudida en Móviles (DeviceMotion / Acelerómetro) ---
-    let motionEnabled = false;
-    let lastAccX = null;
-    let lastAccY = null;
-    let lastAccZ = null;
-    let lastShakeTime = 0;
-
-    function handleDeviceMotion(event) {
-      const acc = event.accelerationIncludingGravity || event.acceleration;
-      if (!acc || acc.x === null) return;
-
-      if (lastAccX !== null) {
-        const deltaX = acc.x - lastAccX;
-        const deltaY = acc.y - lastAccY;
-        const deltaZ = acc.z - lastAccZ;
-
-        const accelerationDelta = Math.hypot(deltaX, deltaY, deltaZ);
-        const now = Date.now();
-
-        // Umbral de sacudida sensible pero sin disparos accidentales al caminar
-        if (accelerationDelta > 15 && now - lastShakeTime > 420) {
-          lastShakeTime = now;
-          const power = Math.min(28, Math.max(14, accelerationDelta * 0.85));
-          triggerShakeImpulse(power, deltaX, deltaY);
-        }
-      }
-
-      lastAccX = acc.x;
-      lastAccY = acc.y;
-      lastAccZ = acc.z;
-    }
-
-    async function enableMotionSensor() {
-      if (motionEnabled) {
-        triggerShakeImpulse(18);
-        return;
-      }
-
-      // iOS 13+ requiere permiso explícito mediante interacción del usuario
-      if (
-        typeof DeviceMotionEvent !== 'undefined' &&
-        typeof DeviceMotionEvent.requestPermission === 'function'
-      ) {
-        try {
-          const permission = await DeviceMotionEvent.requestPermission();
-          if (permission === 'granted') {
-            window.addEventListener('devicemotion', handleDeviceMotion);
-            motionEnabled = true;
-            btnMotionText.textContent = 'Agitado activo';
-            btnMotion.classList.add('bg-emerald-500/30', 'border-emerald-300/60', 'text-emerald-200');
-            showToast('¡Listo! Sacude tu celular para mover las esferas 🎄');
-            triggerShakeImpulse(15);
-          } else {
-            showToast('Permiso denegado. Puedes usar el botón "Sacudir"');
-          }
-        } catch (err) {
-          showToast('No se pudo activar el sensor. Usa el botón "Sacudir"');
-        }
-      } else if ('ondevicemotion' in window) {
-        // Android y navegadores móviles que no requieren requestPermission
-        window.addEventListener('devicemotion', handleDeviceMotion);
-        motionEnabled = true;
-        btnMotionText.textContent = 'Agitado activo';
-        btnMotion.classList.add('bg-emerald-500/30', 'border-emerald-300/60', 'text-emerald-200');
-        showToast('¡Sensor activo! Sacude tu dispositivo 🎄');
-        triggerShakeImpulse(15);
-      } else {
-        showToast('Tu dispositivo no tiene acelerómetro; usa el botón "Sacudir"');
-        triggerShakeImpulse(18);
-      }
-    }
-
-    // Activar automáticamente en Android si está disponible sin diálogo de permiso
-    if (
-      'ondevicemotion' in window &&
-      typeof DeviceMotionEvent !== 'undefined' &&
-      typeof DeviceMotionEvent.requestPermission !== 'function'
-    ) {
-      window.addEventListener('devicemotion', handleDeviceMotion);
-      motionEnabled = true;
-      btnMotionText.textContent = 'Agitado activo';
-    }
-
-    // Botones de control
-    btnMotion.addEventListener('click', enableMotionSensor);
-    btnShake.addEventListener('click', () => {
-      triggerShakeImpulse(20);
-    });
-    btnReset.addEventListener('click', () => {
-      initScene();
-      showToast('Esferas navideñas reiniciadas ✨');
-    });
 
     window.addEventListener('resize', resizeCanvas);
 
-    // Arranque al cargar la ventana
-    window.onload = function () {
-      ornamentSprites = createOrnamentSprites();
-      resizeCanvas();
-      initScene();
-      animate();
-    };
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      startApp();
+    } else {
+      window.addEventListener('DOMContentLoaded', startApp);
+    }
   </script>
+
+
+
+
 </body>
 </html>
